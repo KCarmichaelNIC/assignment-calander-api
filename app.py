@@ -9,7 +9,7 @@ import datetime
 
 # URLs and API endpoints (adjust if necessary)
 LOGIN_URL = "https://mycourses.nic.bc.ca/d2l/login"
-ASSIGNMENTS_URL = "https://mycourses.nic.bc.ca/d2l/le/calendar/12345"  # Replace with your actual URL
+ASSIGNMENTS_URL = "https://mycourses.nic.bc.ca/d2l/le/worktodo/view"  # Replace with your actual URL
 
 # Step 1: Login to D2L platform and scrape assignments
 def login_to_site(username, password):
