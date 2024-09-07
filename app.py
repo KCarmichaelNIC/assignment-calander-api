@@ -2,6 +2,9 @@ import requests
 from bs4 import BeautifulSoup
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+import os.path
 import datetime
 
 # URLs and API endpoints (adjust if necessary)
@@ -18,12 +21,14 @@ def login_to_site(username, password):
 
     # Fill in the login form (adjust fields according to the actual form fields on the website)
     login_data = {
-        'username': username,
-        'password': password,
+        'd2l_username': username,  # Adjust field names according to the actual form fields
+        'd2l_password': password,
         # Include any other hidden fields if necessary
     }
 
-    session.post(LOGIN_URL, data=login_data)
+    # Find the form action URL and submit the form
+    form_action = soup.find('form')['action']
+    session.post(form_action, data=login_data)
 
     return session
 
@@ -40,29 +45,52 @@ def fetch_assignments(session):
 
     return assignments
 
-# Step 2: Add assignments to Google Calendar
+# Step 2: Authenticate with Google and obtain Calendar service
+def authenticate_google():
+    creds = None
+    # Token file stores the user's access and refresh tokens, and is created automatically
+    # when the authorization flow completes for the first time.
+    if os.path.exists('token.json'):
+        creds = Credentials.from_authorized_user_file('token.json', ['https://www.googleapis.com/auth/calendar'])
+    # If no valid credentials are available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                'credentials.json', ['https://www.googleapis.com/auth/calendar'])
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+    
+    return build('calendar', 'v3', credentials=creds)
+
+# Step 3: Add assignments to Google Calendar
 def create_event(service, title, due_date):
-    # Convert string to datetime object
-    due_date_dt = datetime.datetime.strptime(due_date, "%Y-%m-%d %H:%M:%S")
+    try:
+        # Convert string to datetime object
+        due_date_dt = datetime.datetime.strptime(due_date, "%Y-%m-%d %H:%M:%S")
 
-    event = {
-        'summary': title,
-        'start': {
-            'dateTime': due_date_dt.isoformat(),
-            'timeZone': 'America/Vancouver',
-        },
-        'end': {
-            'dateTime': (due_date_dt + datetime.timedelta(hours=1)).isoformat(),
-            'timeZone': 'America/Vancouver',
-        },
-    }
+        event = {
+            'summary': title,
+            'start': {
+                'dateTime': due_date_dt.isoformat(),
+                'timeZone': 'America/Vancouver',
+            },
+            'end': {
+                'dateTime': (due_date_dt + datetime.timedelta(hours=1)).isoformat(),
+                'timeZone': 'America/Vancouver',
+            },
+        }
 
-    event = service.events().insert(calendarId='primary', body=event).execute()
-    print(f"Event created: {event.get('htmlLink')}")
+        event = service.events().insert(calendarId='primary', body=event).execute()
+        print(f"Event created: {event.get('htmlLink')}")
+    except Exception as e:
+        print(f"Error creating event: {e}")
 
 def add_assignments_to_calendar(assignments):
-    creds = Credentials.from_authorized_user_file('token.json', ['https://www.googleapis.com/auth/calendar'])
-    service = build('calendar', 'v3', credentials=creds)
+    service = authenticate_google()
 
     for title, due_date in assignments:
         create_event(service, title, due_date)
