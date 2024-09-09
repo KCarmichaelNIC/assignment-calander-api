@@ -98,8 +98,8 @@ def add_assignments_to_calendar(assignments):
 # Main function to run the script
 def main():
     # Replace with your actual D2L login credentials
-    username = "your_username"
-    password = "your_password"
+    username = "kcarmichael@northislandcollege.ca"
+    password = "Puma6402!!"
 
     session = login_to_site(username, password)
     assignments = fetch_assignments(session)
@@ -112,3 +112,50 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# selenium for dynamic content
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+import time
+
+# Initialize a WebDriver session
+def login_to_site(username, password):
+    driver = webdriver.Chrome()  # Make sure you have the correct WebDriver installed
+    driver.get(LOGIN_URL)
+
+    # Locate and fill in the login form
+    driver.find_element(By.ID, 'd2l_username').send_keys(username)  # Adjust the ID if necessary
+    driver.find_element(By.ID, 'd2l_password').send_keys(password)
+    driver.find_element(By.NAME, 'login').click()  # Adjust the name or type of the button
+
+    # Wait for login to complete and assignments page to load
+    time.sleep(5)  # You may need to adjust this depending on the site speed
+    driver.get(ASSIGNMENTS_URL)
+
+    return driver
+
+# Fetch assignments using Selenium
+def fetch_assignments(driver):
+    assignments = []
+    time.sleep(5)  # Ensure the page is fully loaded
+    items = driver.find_elements(By.CLASS_NAME, 'assignment')  # Adjust class name as necessary
+
+    for item in items:
+        title = item.find_element(By.TAG_NAME, 'h2').text
+        due_date = item.find_element(By.CLASS_NAME, 'due-date').text  # Adjust selectors
+        assignments.append((title, due_date))
+
+    return assignments
+#check if google api is set up properly
+def list_calendar_events():
+    service = authenticate_google()
+    now = datetime.datetime.utcnow().isoformat() + 'Z'
+    events_result = service.events().list(calendarId='primary', timeMin=now, maxResults=10, singleEvents=True, orderBy='startTime').execute()
+    events = events_result.get('items', [])
+    
+    if not events:
+        print('No upcoming events found.')
+    for event in events:
+        start = event['start'].get('dateTime', event['start'].get('date'))
+        print(start, event['summary'])
