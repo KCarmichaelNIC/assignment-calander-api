@@ -9,3 +9,17 @@ justify-content: center;}
 p{color: red;
 display: flex;
 justify-content: center;}
+
+
+a{
+    display: flex;
+    justify-content: center;
+    color: blue;
+    text-decoration: none;
+}
+a:hover{
+    color: red;
+    text-decoration: underline;
+    font-size: 3rem;
+    font-family: Arial, Helvetica, sans-serif;
+}
